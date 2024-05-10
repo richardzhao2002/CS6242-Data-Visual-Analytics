@@ -1,0 +1,22 @@
+Parameter,Value
+GTID,rzhao97
+1_Mean Absolute Error,3429.402722
+1_Root Mean Squared Error,4407.522806
+1_Relative Absolute Error,1.04727106
+1_Relative Squared Error,0.974507054
+1_Coefficient of Determination,-0.047271061
+2_Mean Absolute Error,3594.096901
+2_Root Mean Squared Error,4653.102737
+2_Relative Absolute Error,1.20554499
+2_Relative Squared Error,0.990516939
+2_Coefficient of Determination,-0.20554499
+3_Root Mean Squared Error (RMSE) for 1st fold,6124.191542
+3_Root Mean Squared Error (RMSE) for 2nd fold,4780.943884
+3_Root Mean Squared Error (RMSE) for 3rd fold,5665.727237
+3_Root Mean Squared Error (RMSE) for 4th fold,4726.992774
+3_Root Mean Squared Error (RMSE) for 5th fold,4583.438099
+3_Coefficient of Determination for 1st fold,0.503030582
+3_Coefficient of Determination for 2nd fold,0.830900793
+3_Coefficient of Determination for 3rd fold,-0.509911408
+3_Coefficient of Determination for 4th fold,0.60094381
+3_Coefficient of Determination for 5th fold,-0.162124568

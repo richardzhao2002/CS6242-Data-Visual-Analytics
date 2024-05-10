@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<!-- To view in browser: python3 -m http.server 8080 & -->
+<!-- Then visit http://0.0.0.0:8080/interactive.html in your browser -->
+<head>
+  <title>Games Rating: 2015 - 2019</title>
+  <meta charset="utf-8">
+  <style>
+    /* <!-- define CSS rules --> */
+  </style>
+</head>
+
+<body>
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-dsv.min.js"></script>
+  <!-- Example hiding an element -->
+  <!-- <g id="" style"display:none;" /> -->
+
+  <!-- Example of styling an element -->
+  <!-- svg_element.style()-->
+
+  <script>
+    // define the dimensions and margins for the line chart
+    // Use the Margin Convention referenced in the HW document to layout your graph
+    var margin = {top: 50, right: 50, bottom: 50, left: 50}
+  , width = 1024 - margin.left - margin.right // Use the window's width 
+  , height = 550 - margin.top - margin.bottom; // Use the window's height
+
+    // define the dimensions and margins for the bar chart
+
+
+    // append svg element to the body of the page
+    // set dimensions and position of the svg element
+    const svg = d3
+      .select("body")
+      .append("svg")
+      .attr("id", "line_chart")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    const container = svg
+      .append("g")
+      .attr("id", "container")
+    container.append("text")
+      .attr("id", "line_chart_title")
+      .attr("x", (width / 2))
+      .attr("y", 0 - (margin.top / 2))
+      .attr("text-anchor", "middle")
+      .text("Board games by Rating 2015-2019")
+
+    // Fetch the data
+	  var pathToCsv = "./average-rating.csv";
+
+
+    d3.dsv(",", pathToCsv, function (d) {
+      return {
+        // format data attributes if required
+        name: d.name,
+        year: +d.year,
+        average_rating: +d.average_rating,
+        users_rated: +d.users_rated
+      }
+    }).then(function (data){
+      const filteredData = data.filter(d => d.year >= 2015 && d.year <= 2019);
+      const summarizedData = d3.nest()
+        .key(d => d.year)
+        .key(d => Math.floor(d.average_rating))
+        .rollup(v => v.length)
+        .entries(filteredData)
+      
+      // zero padding data
+      var ratings = d3.range(10);
+      for (i = 0; i < summarizedData.length; i++){
+        var ratingExist = []
+        for (j = 0; j < summarizedData[i].values.length; j++){
+          ratingExist.push(summarizedData[i].values[j].key)
+        }
+        
+        for (j = 0; j < ratings.length; j++){
+          if (!ratingExist.includes(ratings[j].toString())){
+            summarizedData[i].values.push({"key": ratings[j].toString(), "value": 0})
+          }
+        }
+      }
+
+      // console.log("summarizedData", summarizedData)
+      
+      //----------------------------SCALES----------------------------//
+      const colorScale = d3.scaleOrdinal().range(d3.schemeCategory10);
+      const colorArray = [d3.schemeCategory10][0]
+      const xScale = d3.scaleLinear().range([0, width]);
+      const yScale = d3.scaleLinear().range([height, 0]);
+
+      xScale.domain([0, d3.max(summarizedData.map(d => d.values).flat(), v => v.key)]);
+      yScale.domain([0, d3.max(summarizedData.map(d => d.values).flat(), v => v.value)])
+      //-----------------------------AXES-----------------------------//
+      console.log("xScale", xScale.range())
+      console.log("yScale", yScale.range())
+      container
+        .append("g")
+        .attr("id", "x-axis-lines")
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(xScale))
+
+      container
+        .append("text")
+        .text("Ratings")        
+        .attr("id", "x-axis-a")
+        .attr("text-anchor", "middle")
+        .attr("transform", `translate(${width / 2}, ${height / 2 + 250})`)
+        .style("fill", "black")
+        .style("font-size", "20px")
+      
+      container
+        .append("g")
+        .attr("id", "y-axis-lines")
+        .attr("transform", `translate(0, 0)`)
+        .call(d3.axisLeft(yScale))
+      
+      container
+        .append("g")
+        .attr("id", "y-axis-a")
+        .attr("transform", `translate(0, ${height / 2} )`)
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("dy", "1em")
+        .style("text-anchor", "end")
+        .text("Count")
+        .style("fill", "black")
+        .style("font-size", "20px")
+      //----------------------------LINES-----------------------------//
+      const line = d3.line()
+          .x(function(d) { return xScale(d.key); })
+          .y(function(d) { return yScale(d.value); });
+      
+      var lines = container
+                  .append("g")
+                  .attr("id", "lines")
+                  // .attr("transform",`translate(${margin.left}, ${margin.top})`);
+      
+      //----------------------------CIRCLES-----------------------------//
+      var circles = container
+                  .append("g")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom)
+                  .attr("id", "circles")
+                  // .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                  .selectAll("circle")
+
+      var legend = container
+                  .append("g")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom+50)
+                  .attr("id", "legend")
+                  .attr("transform",
+                        "translate(" + margin.left + "," + margin.top + ")")
+      //----------------------------DRAW LINES-----------------------------//
+      // console.log("data lenghth", summarizedData.length)
+      for (i = 0; i < summarizedData.length; i++){
+        year = summarizedData[i].key
+        y = summarizedData[i].values.sort(function(a, b) { return +a.key  - +b.key })
+        color = colorArray[i]
+        // console.log("year", year)
+        // console.log("y", y)
+        // console.log("color", color)
+        
+        const line_group = lines.append("path")
+          .data([y])
+          .attr("class", "line")
+          .attr("d", line)
+          .attr('stroke', color)
+          .style('fill', 'none')
+        
+        //----------------------------DRAW CIRCLES-----------------------------//
+        var circle_data = []
+        for (j = 0; j < y.length; j++) {
+          circle_data[j] = Object.assign({rating: j}, y[j], {year}, {color})
+        }
+        // console.log("circle_data", circle_data)
+
+        for (k = 0; k < circle_data.length; k++) {
+            circles
+            .data([circle_data[k]])
+            .enter().append("circle") // Uses the enter().append() method
+            .attr("id", function (d){return d.year })
+            .attr("class", "dot") // Assign a class for styling
+            .attr("cx", (d) => xScale(d.key))
+            .attr("cy", (d) => yScale(d.value))
+            .attr("r", 4)
+            .attr('fill', color)
+            .on("mouseover", function (d){
+              // console.log("d.key", d.key)
+              // console.log("year", year)
+              // console.log("d", d)
+              // console.log("color", color)
+              hover(+d.year - 2015, d.rating, d.color)
+              d3.select(this).attr("r", 12)
+            })
+            .on("mouseout", function (d){
+              d3.select(this).attr("r", 4)
+              d3.select("body").select("#bar_chart").remove()
+            })
+        }
+        //----------------------------DRAW LEGINDS-----------------------------//
+        legend.append("circle")
+              .attr("cx",700)
+              .attr("cy",130 + i * 20)
+              .attr("r", 4)
+              .style("fill", colorScale(year))
+        
+        legend.append("text")
+              .attr("x", 720)
+              .attr("y", 130 + i * 20)
+              .text(year)
+              .style("font-size", "15px")
+              .attr("alignment-baseline","middle")
+      }
+      const credit = container
+                  .append("g")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom+50)
+                  .attr("id", "credit")
+                  .attr("transform",
+                        "translate(" + margin.left + "," + margin.top + ")")
+                  .append("text")
+                  .attr("x", (width / 2))             
+                  .attr("y", 0 - (margin.top / 2)+30)
+                  .text("rzhao97")
+                  .style("font-size", "15px")
+                  .attr("alignment-baseline","middle")
+                  
+                  
+      //----------------------------BARPLOT-----------------------------//
+      //----------------------------DATA-----------------------------//
+      /* Create bar plot using data from csv */
+      const BarplotData = d3.nest()
+                            .key(d => d.year)
+                            .key(d => Math.floor(d.average_rating))
+                            .entries(filteredData)
+
+      // zero padding data
+      var ratings = d3.range(10);
+      for (i = 0; i < BarplotData.length; i++){
+        var ratingExist = []
+        for (j = 0; j < BarplotData[i].values.length; j++){
+          ratingExist.push(BarplotData[i].values[j].key)
+        }
+        // console.log("ratingExist", ratingExist)
+        for (k = 0; k < ratings.length; k++){
+          if (!ratingExist.includes(ratings[k].toString())){
+            BarplotData[i].values.push({"key": ratings[k].toString(), "value": []})
+          }
+        }
+        // console.log("BarplotData[i].values", BarplotData[i].values)
+      }
+
+      for (i = 0; i < BarplotData.length; i++) {
+        for (j = 0; j < BarplotData[i].values.length; j++) {
+          if((BarplotData[i].values[j].values)){
+            BarplotData[i].values[j].values.sort(function(a, b){
+              return b.users_rated - a.users_rated;
+            })
+            BarplotData[i].values[j].values = BarplotData[i].values[j].values.slice(0, 5)
+            for (k = 0; k < BarplotData[i].values[j].values.length; k++) {
+              if(BarplotData[i].values[j].values[k].name.length > 10){
+                BarplotData[i].values[j].values[k].name = BarplotData[i].values[j].values[k].name.slice(0, 10)
+              }
+            }
+          }
+          BarplotData[i].values.sort(function(a, b) {
+            return a.key - b.key;
+          });
+        }
+      }
+      // console.log("BarplotData", BarplotData)
+      //----------------------------BARPLOT SVG-----------------------------//
+      function hover(index, rating, color){
+        // console.log("index", index)
+        // console.log("BarplotData[index]", BarplotData[index])
+        if (BarplotData[index].values[rating].values){
+          var margin = {top: 20, right: 30, bottom: 40, left: 250},
+                        w = 700 - margin.left - margin.right,
+                        h = 400 - margin.top - margin.bottom;
+          const barsvg = d3.select("body")
+                        .append("svg")
+                        .attr("id","bar_chart")
+                        .attr("width", w + margin.left + margin.right)
+                        .attr("height", h + margin.top + margin.bottom)
+                        // .append("g")
+                        // .attr("transform", `translate(${margin.left}, ${margin.top})`);
+          const conatiner2 = barsvg
+                            .append("g")
+                            .attr("id", "container_2")
+      //----------------------------BARPLOT AXIS-----------------------------//
+        // console.log("BarplotData[index].values[rating]", BarplotData[index].values[rating])
+        // console.log(`index: ${index}, rating: ${rating}`)
+        // console.log("BarplotData[index].values[rating].values", BarplotData[index].values[rating].values)
+        const names = BarplotData[index].values[rating].values.map(d => d.name).reverse()
+        // console.log("names", names)
+        var barY = d3.scaleBand()
+                    .domain(names)
+                    .range([h, 0])
+        var barX = d3.scaleLinear()
+                    .domain([0, d3.max(BarplotData[index].values[rating].values).users_rated])
+                    .range([0, w]);
+        
+        d3.select("div")
+          .attr("id", "bar_chart_title")
+          .attr("transform", `translate(${margin.left}, ${margin.top})`)
+          .append("text")
+          .attr("x", (w / 2))             
+          .attr("y", 0 - (margin.top / 2)+5)
+          .attr("text-anchor", "middle")
+          .text(`Top 5 Most Rated Games of ${index + 2015} with Rating ${rating}`);
+        
+        conatiner2
+          .append("g")
+          .attr("id", "x-axis-bars")
+          .attr("transform", "translate("+margin.left+",360" + ")")
+          .call(d3.axisBottom(barX))
+          .selectAll("text")
+          .attr("transform", "translate(0,10)rotate(0)")
+          .style("text-anchor", "end");
+
+        conatiner2
+          .append("text")
+          .attr("id", "bar_x_axis_label")
+          .attr("text-anchor", "end")
+          .attr("transform", "translate(250, 10)")
+          .attr("x", w)
+          .attr("y", h - 6)
+          .text("Number of users");
+
+          conatiner2
+          .append("g")
+          .attr("class", "axis")
+          .attr("id", "y-axis-bars")
+          .attr("transform", `translate(${margin.left}, ${margin.top})`)
+          .call(d3.axisLeft(barY))
+          .append("text")
+          .attr("x", 0)
+          .attr("y", -5)
+          .style("text-anchor", "end")
+          .text("Pct %");
+
+        conatiner2
+          .append("text")
+          .attr("id", "bar_y_axis_label")
+          // .attr("transform", `translate(240, 20)`)
+          .attr("transform", "rotate(-90)")
+          .attr("dy", "1em")
+          .attr("y", margin.left - 100)
+          .attr("x", -height / 2 + 100)
+          .style("text-anchor", "end")
+          .text("Games")
+        //----------------------------DRAW BARS-----------------------------//
+        conatiner2
+          .append("g")
+          .attr("id", "bars")
+          .selectAll("myRect")
+          .data(BarplotData[index].values[rating].values)
+          .enter()
+          .append("rect")
+          .attr("transform", `translate(${margin.left}, ${margin.top})`)
+          .attr("x", barX(0) )
+          .attr("y", function(d) { return barY(d.name); })
+          .attr("width", function(d) { return barX(d.users_rated); })
+          .attr("height", barY.bandwidth() - 20)
+          .attr("fill", color)
+        } else{
+          return;
+        }
+      }
+    }).catch(function (error) {
+      console.log(error);
+    });
+
+  </script>
+
+</body>
